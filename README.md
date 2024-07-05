@@ -2,7 +2,7 @@
 The MakeRequest function is a utility for performing customizable HTTP requests in Go. It allows setting headers, query parameters, and handling errors effectively. Additionally, it provides a Response structure to facilitate reading and decoding the server response.
 
 ```bash
-    go get -u github.com/user0608/apis
+go get -u github.com/user0608/apis
 ```
 ```go
 package main
