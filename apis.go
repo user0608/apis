@@ -68,19 +68,26 @@ func Header(key, value string, append ...bool) requestOption {
 	}
 }
 
-type Response struct {
-	StatusCode int
-	Body       io.Reader
-	BytesLen   int64
-	Err        error
+type Response interface {
+	Scan(v any) error
+}
+type response struct {
+	statusCode int
+	body       io.Reader
+	bytesLen   int64
+	err        error
 }
 
-func (r *Response) Scan(v any) error {
-	if r.Err != nil {
-		return r.Err
+func (r *response) Scan(v any) error {
+	if r.err != nil {
+		return r.err
 	}
-	return json.NewDecoder(r.Body).Decode(&v)
+	return json.NewDecoder(r.body).Decode(&v)
 }
+func (r *response) BodyReader() io.Reader { return r.body }
+func (r *response) BodyLen() int64        { return r.bytesLen }
+func (r *response) Err() error            { return r.err }
+func (r *response) StatusCode() int       { return r.statusCode }
 
 func MakeRequest(ctx context.Context, apiurl string, requestOptions ...requestOption) Response {
 	var options = params{
@@ -99,7 +106,7 @@ func MakeRequest(ctx context.Context, apiurl string, requestOptions ...requestOp
 	}
 	if err != nil {
 		slog.Error("Failed to parse request options", "error", err, "url", apiurl)
-		return Response{Err: err}
+		return &response{err: err}
 	}
 	endpoint, err := url.JoinPath(apiurl, options.path)
 	if err != nil {
@@ -109,7 +116,7 @@ func MakeRequest(ctx context.Context, apiurl string, requestOptions ...requestOp
 			"apiurl", apiurl,
 			"path", options.path,
 		)
-		return Response{Err: err}
+		return &response{err: err}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -118,7 +125,7 @@ func MakeRequest(ctx context.Context, apiurl string, requestOptions ...requestOp
 			"error", err,
 			"endpoint", endpoint,
 		)
-		return Response{Err: err}
+		return &response{err: err}
 	}
 	for key, values := range options.header {
 		if !options.headerAppaned[key] {
@@ -137,10 +144,10 @@ func MakeRequest(ctx context.Context, apiurl string, requestOptions ...requestOp
 			"endpoint", endpoint,
 			"method", options.method,
 		)
-		return Response{Err: err}
+		return &response{err: err}
 	}
 	defer res.Body.Close()
 	var buff bytes.Buffer
 	written, err := io.Copy(&buff, res.Body)
-	return Response{Err: err, StatusCode: res.StatusCode, Body: &buff, BytesLen: written}
+	return &response{err: err, statusCode: res.StatusCode, body: &buff, bytesLen: written}
 }
