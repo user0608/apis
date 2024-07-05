@@ -70,6 +70,10 @@ func Header(key, value string, append ...bool) requestOption {
 
 type Response interface {
 	Scan(v any) error
+	BodyReader() io.Reader
+	BodyLen() int64
+	Err() error
+	StatusCode() int
 }
 type response struct {
 	statusCode int
